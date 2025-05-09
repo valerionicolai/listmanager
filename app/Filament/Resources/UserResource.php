@@ -9,7 +9,8 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\Hash;
+use Filament\Forms\Components\TextInput; // Ensure TextInput is imported
+use Illuminate\Support\Facades\Hash; // Ensure Hash is imported
 use Spatie\Permission\Models\Role; // Import Role
 use Filament\Forms\Components\Select; // Import Select
 use Filament\Tables\Columns\TextColumn; // Import TextColumn
@@ -31,29 +32,37 @@ class UserResource extends Resource
                 Forms\Components\TextInput::make('email')
                     ->email()
                     ->required()
-                    ->unique(ignoreRecord: true) // Ensure email is unique, ignoring current record on edit
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('password')
-                    ->password()
-                    ->dehydrateStateUsing(fn ($state) => Hash::make($state))
-                    ->dehydrated(fn ($state) => filled($state)) // Only hash and save if filled
-                    ->required(fn (string $context): bool => $context === 'create') // Required only on create
                     ->maxLength(255)
-                    ->confirmed(), // Adds password_confirmation field
-                Forms\Components\Select::make('roles') // For assigning roles
-                    ->multiple()
-                    ->relationship('roles', 'name')
-                    ->preload() // Preload options for better UX
-                    ->options(Role::all()->pluck('name', 'id')) // Ensure roles are loaded correctly
-                    ->helperText('Select roles for this user. SuperAdmin can manage all roles. Admin can manage Admin and Operator roles.')
-                    // Logic to disable role options based on current user's role can be complex here.
-                    // It's often better handled by policy or by limiting options based on the logged-in user.
-                    // For now, SuperAdmin will see all. Admins might need a more restricted list.
-                    ->visible(fn () => auth()->user()->hasRole('SuperAmministratore')), // Simplification: only SuperAdmin manages roles directly in form
-                                                                                    // More granular control can be added if needed.
+                    ->unique(ignoreRecord: true), // Ensure unique email, ignoring the current record on edit
                 Forms\Components\DateTimePicker::make('email_verified_at')
                     ->label('Email Verified At')
                     ->nullable(),
+                TextInput::make('password')
+                    ->password()
+                    ->revealable()
+                    ->required(fn (string $context): bool => $context === 'create') // Only required on create
+                    ->dehydrated(fn ($state) => filled($state)) // Only send to backend if filled (for updates)
+                    ->dehydrateStateUsing(fn ($state) => Hash::make($state)) // Hash password before saving
+                    ->confirmed() // This will automatically look for 'password_confirmation'
+                    ->maxLength(255),
+                TextInput::make('password_confirmation')
+                    ->password()
+                    ->revealable()
+                    ->required(fn (string $context): bool => $context === 'create') // Only required on create
+                    ->dehydrated(false) // Don't save this field to the database
+                    ->maxLength(255),
+                Forms\Components\Select::make('roles')
+                    ->multiple()
+                    ->relationship('roles', 'name')
+                    ->preload()
+                    // ->options(Role::pluck('name', 'id')) // This is an alternative if relationship doesn't work as expected
+                    ->getOptionLabelFromRecordUsing(fn ($record) => $record->name) // Ensure correct label
+                    ->helperText('Select roles for the user. SuperAmministratore can only be managed by another SuperAmministratore.')
+                    ->hidden(function () { // Control who can see/edit roles based on logged-in user
+                        $loggedInUser = auth()->user();
+                        // Hide the field if the user is NOT a SuperAmministratore AND NOT an Amministratore
+                        return !($loggedInUser->hasRole('SuperAmministratore') || $loggedInUser->hasRole('Amministratore'));
+                    }),
             ]);
     }
 
