@@ -40,7 +40,8 @@ class ContactPolicy
     public function create(User $user): bool
     {
         // Any authenticated user (SuperAdmin, Admin, Operator) can create contacts.
-        return $user->isNotNull(); // Or simply true if all authenticated users are intended
+                // If this method is called, it means a user is authenticated.
+        return true;
     }
 
     /**

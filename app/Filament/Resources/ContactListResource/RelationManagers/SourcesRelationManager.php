@@ -28,9 +28,12 @@ class SourcesRelationManager extends RelationManager
                 Forms\Components\TextInput::make('name')
                     ->required()
                     ->maxLength(255)
-                    ->unique(ignoreRecord: true, callback: function ($rule, Forms\Get $get, RelationManager $livewire) {
-                        return $rule->where('contact_list_id', $livewire->ownerRecord->id);
-                    }),
+                    ->unique(
+                        ignoreRecord: true,
+                        modifyRuleUsing: function ($rule, Forms\Get $get, RelationManager $livewire) { // Changed 'callback' to 'modifyRuleUsing'
+                            return $rule->where('contact_list_id', $livewire->ownerRecord->id);
+                        }
+                    ),
                 // contact_list_id is automatically set because it's a relationship
                 // user_id will be set in mutateFormDataBeforeCreate
             ]);

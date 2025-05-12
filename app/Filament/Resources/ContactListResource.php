@@ -6,6 +6,8 @@ use App\Filament\Resources\ContactListResource\Pages;
 use App\Filament\Resources\ContactListResource\RelationManagers; // We'll create these
 use App\Models\ContactList;
 use Filament\Forms;
+use Filament\Forms\Components\Textarea; // Make sure Textarea is imported if you use it
+use Filament\Forms\Components\TextInput; // Or TextInput
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -26,17 +28,16 @@ class ContactListResource extends Resource
             ->schema([
                 Forms\Components\TextInput::make('name')
                     ->required()
-                    ->unique(ignoreRecord: true)
                     ->maxLength(255),
-                Forms\Components\Textarea::make('description')
+                Textarea::make('description') // Or Forms\Components\TextInput::make('description')
                     ->nullable()
-                    ->columnSpanFull(),
-                Forms\Components\TextInput::make('priority')
+                    ->maxLength(65535), // Max length for TEXT type
+                    Forms\Components\TextInput::make('priority')
                     ->required()
                     ->numeric()
                     ->default(0)
                     ->helperText('Lower numbers have higher priority (e.g., 0 is highest).'),
-                // user_id is set automatically in CreateContactList page
+                // user_id is usually handled automatically by mutateFormDataBeforeCreate
             ]);
     }
 

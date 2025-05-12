@@ -43,7 +43,7 @@ class ContactResource extends Resource
                     ->maxLength(255)
                     ->unique(
                         ignoreRecord: true,
-                        callback: function (Unique $rule, Get $get) {
+                        modifyRuleUsing: function (Unique $rule, Get $get) { // Changed 'callback' to 'modifyRuleUsing'
                             return $rule->where('first_name', $get('first_name'))
                                         ->where('last_name', $get('last_name'));
                         }
@@ -85,7 +85,11 @@ class ContactResource extends Resource
                             return collect(); // Return empty collection if no list is selected
                         }
                         // Fetch sources belonging to the selected contact list
+                        // Ensure this logic aligns with your actual Source model and its relationship to ContactList
+                        // If Source has a direct contact_list_id:
                         return Source::where('contact_list_id', $contactListId)->pluck('name', 'id');
+                        // If Source is related to ContactList via a pivot table (e.g., contact_list_source):
+                        // return ContactList::find($contactListId)?->sources()->pluck('name', 'id') ?? collect();
                     })
                     ->preload()
                     ->searchable()

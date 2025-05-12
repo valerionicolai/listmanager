@@ -32,7 +32,7 @@ class SourceResource extends Resource
                     ->maxLength(255)
                     ->unique(
                         ignoreRecord: true,
-                        callback: function (Forms\Get $get, \Illuminate\Validation\Rules\Unique $rule) {
+                        modifyRuleUsing: function (Forms\Get $get, \Illuminate\Validation\Rules\Unique $rule) { // Changed 'callback' to 'modifyRuleUsing'
                             // Source name should be unique within a specific ContactList
                             return $rule->where('contact_list_id', $get('contact_list_id'));
                         }
