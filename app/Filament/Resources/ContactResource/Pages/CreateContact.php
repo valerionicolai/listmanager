@@ -6,10 +6,17 @@ use App\Filament\Resources\ContactResource;
 use Filament\Actions;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Contact; // Added
+use App\Models\Source; // Added
+// Remove Dialog import
+use Filament\Facades\Filament; // Added for SPA navigation check
+use Filament\Notifications\Notification; // Add this for notifications
+use Filament\Notifications\Actions\Action; // Add this for notification actions
 
 class CreateContact extends CreateRecord
 {
     protected static string $resource = ContactResource::class;
+    protected bool $bypassDuplicateCheck = false;
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
@@ -31,4 +38,135 @@ class CreateContact extends CreateRecord
     //         $this->record->sources()->sync($this->data['source_ids']);
     //     }
     // }
+
+    // --- ADDED/MODIFIED CODE STARTS HERE ---
+
+    protected function getRedirectUrl(): string
+    {
+        return static::getResource()::getUrl('index');
+    }
+
+    public function create(bool $another = false): void // Changed from protected to public
+    {
+        if ($this->bypassDuplicateCheck) {
+            parent::create($another);
+            return;
+        }
+        $this->callHook('beforeValidate');
+        $data = $this->form->getState();
+        $this->callHook('afterValidate');
+
+        $email = $data['email'] ?? null;
+        $newFirstName = $data['first_name'] ?? 'the new contact'; // Name from the current form
+        $newLastName = $data['last_name'] ?? '';                 // Name from the current form
+
+        if (!$email) {
+            // If email is not set (should be caught by validation, but as a safeguard)
+            $this->completeCreateProcess($data, $another);
+            return;
+        }
+
+        // Check if any contacts already exist with this email - get ALL matching contacts
+        $existingContacts = Contact::where('email', $email)
+                                ->with(['sources.contactList']) // Eager load sources and their contact lists
+                                ->get(); // Use get() instead of first() to retrieve all matching contacts
+
+        if ($existingContacts->count() > 0) {
+            $newContactFullName = trim("{$newFirstName} {$newLastName}");
+            if (empty($newContactFullName)) {
+                $newContactFullName = "the new contact you are trying to add";
+            }
+
+            $warningMessage = "The email '{$email}' already exists in the database.\n\n";
+            $warningMessage .= "Found " . $existingContacts->count() . " contact(s) with this email:\n\n";
+            
+            // Enumerate all existing contacts with the same email
+            foreach ($existingContacts as $index => $contact) {
+                $contactFullName = trim("{$contact->first_name} {$contact->last_name}");
+                if (empty($contactFullName)) {
+                    $contactFullName = "Unnamed contact";
+                }
+                
+                // Get lists and sources for this contact
+                $listNames = $contact->sources->map(function ($source) {
+                    return $source->contactList?->name; // Get the name of the contact list for each source
+                })->filter()->unique()->implode(', '); // Remove nulls, get unique names, and join
+
+                $sourceNames = $contact->sources->pluck('name')
+                                           ->filter()->unique()->implode(', '); // Get unique source names and join
+                
+                $warningMessage .= ($index + 1) . ". {$contactFullName} (ID: {$contact->id})\n";
+                
+                if (!empty($listNames)) {
+                    $warningMessage .= "   - Lists: {$listNames}\n";
+                }
+                if (!empty($sourceNames)) {
+                    $warningMessage .= "   - Sources: {$sourceNames}\n";
+                }
+                $warningMessage .= "\n";
+            }
+            
+            $warningMessage .= "Do you still want to proceed with adding {$newContactFullName}?";
+
+    
+           // ... existing code ...
+
+           Notification::make()
+           ->warning()
+           ->title('Email Already Exists')
+           ->body(nl2br(htmlspecialchars($warningMessage)))
+           ->persistent()
+           ->actions([
+               Action::make('proceed')
+                   ->label('Yes, Create Anyway')
+                   ->color('danger')
+                   ->button()
+                   ->dispatch('proceedCreateAnyway', ['another' => $another]),
+               Action::make('cancel')
+                   ->label('Cancel')
+                   ->close(),
+           ])
+           ->send();
+
+// ... existing code ...
+
+            return; // Halt current create flow, wait for notification interaction
+        }
+
+        // No existing contact with this email found, proceed directly
+        $this->completeCreateProcess($data, $another);
+    }
+
+    public function completeCreateProcess(array $data, bool $another = false): void
+    {
+        // Data should be mutated before creation
+        $mutatedData = $this->mutateFormDataBeforeCreate($data);
+
+        $this->callHook('beforeCreate');
+        $record = $this->handleRecordCreation($mutatedData);
+        $this->form->model($record)->saveRelationships(); // Crucial for saving many-to-many like sources
+        $this->callHook('afterCreate');
+
+        $this->rememberData();
+
+        if ($notification = $this->getCreatedNotification()) {
+            $notification->send();
+        }
+
+        if ($another) {
+            $this->form->fill(); // Reset form for creating another
+        } elseif ($redirectUrl = $this->getRedirectUrl()) {
+            // Determine if SPA navigation can be used
+            // MODIFIED LINE:
+            $canSpaNavigate = method_exists(Filament::class, 'isSpaEnabled') && Filament::isSpaEnabled() && method_exists($this, 'canSpaNavigate') ? $this->canSpaNavigate() : false;
+            $this->redirect($redirectUrl, navigate: $canSpaNavigate);
+        }
+    }
+    protected $listeners = ['proceedCreateAnyway'];
+    public function proceedCreateAnyway($params = [])
+    {
+        $this->bypassDuplicateCheck = true;
+        $another = $params['another'] ?? false;
+        $this->create($another);
+    }
 }

@@ -43,7 +43,7 @@ class ContactResource extends Resource
                     ->maxLength(255)
                     ->unique(
                         ignoreRecord: true,
-                        modifyRuleUsing: function (Unique $rule, Get $get) { // Changed 'callback' to 'modifyRuleUsing'
+                        modifyRuleUsing: function (Forms\Get $get, \Illuminate\Validation\Rules\Unique $rule) { // Corrected Unique type hint
                             return $rule->where('first_name', $get('first_name'))
                                         ->where('last_name', $get('last_name'));
                         }
@@ -65,35 +65,21 @@ class ContactResource extends Resource
                 Forms\Components\Textarea::make('notes')
                     ->nullable()
                     ->columnSpanFull(),
-                Forms\Components\Select::make('contact_list_id') // Temporary field to select a ContactList
-                    ->label('Contact List (Lista)')
-                    ->options(ContactList::orderBy('priority')->pluck('name', 'id'))
-                    ->searchable()
-                    ->live() // Make it reactive
-                    ->afterStateUpdated(fn (Set $set) => $set('source_ids', null)) // Reset sources when list changes
-                    ->helperText('Select the primary list for this contact. Sources will be filtered based on this list.')
-                    ->required(fn (string $context): bool => $context === 'create') // Required on create
-                    ->dehydrated(false) // Don't save this directly to contact, it's for filtering sources
-                    ->columnSpanFull(),
-                Forms\Components\Select::make('source_ids') // Changed from source_id to source_ids for multiple selection
+                // Removed the contact_list_id field as it's no longer needed for filtering
+                Forms\Components\Select::make('source_ids')
                     ->label('Sources')
-                    ->multiple() // Allow selecting multiple sources
-                    ->relationship(name: 'sources', titleAttribute: 'name') // Define relationship for saving
-                    ->options(function (Get $get): Collection {
-                        $contactListId = $get('contact_list_id');
-                        if (!$contactListId) {
-                            return collect(); // Return empty collection if no list is selected
-                        }
-                        // Fetch sources belonging to the selected contact list
-                        // Ensure this logic aligns with your actual Source model and its relationship to ContactList
-                        // If Source has a direct contact_list_id:
-                        return Source::where('contact_list_id', $contactListId)->pluck('name', 'id');
-                        // If Source is related to ContactList via a pivot table (e.g., contact_list_source):
-                        // return ContactList::find($contactListId)?->sources()->pluck('name', 'id') ?? collect();
+                    ->multiple()
+                    ->relationship(name: 'sources', titleAttribute: 'name') // This handles saving
+                    ->options(function (): Collection {
+                        // Fetch all sources and format them to include their contact list name
+                        return Source::with('contactList')->get()->mapWithKeys(function ($source) {
+                            $listName = $source->contactList ? $source->contactList->name : 'No List';
+                            return [$source->id => "{$source->name} ({$listName})"];
+                        });
                     })
                     ->preload()
                     ->searchable()
-                    ->helperText('Select one or more sources. These are filtered by the selected Contact List.')
+                    ->helperText('Select one or more sources. Sources are shown with their respective contact lists.')
                     ->required(fn (string $context): bool => $context === 'create') // Required on create
                     ->columnSpanFull(),
                 // user_id is set automatically in CreateContact page
@@ -111,15 +97,21 @@ class ContactResource extends Resource
                     ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('email')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('phone')
                     ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('user.name') // Owner
-                    ->label('Owner')
-                    ->sortable()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('phone')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('sources.name') // Display associated sources
+                Tables\Columns\TextColumn::make('user.name')
+                    ->label('Owner')
+                    ->searchable()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('sources.contactList.name')
+                    ->label('Contact List')
+                    ->badge()
+                    ->searchable()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('sources.name')
+                    ->label('Sources')
                     ->badge()
                     ->searchable(),
                 Tables\Columns\TextColumn::make('created_at')
