@@ -124,7 +124,61 @@ class ContactResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                Tables\Filters\Filter::make('first_name')
+                    ->form([
+                        Forms\Components\TextInput::make('first_name')->label('First Name'),
+                    ])
+                    ->query(function (Builder $query, array $data) {
+                        if ($data['first_name']) {
+                            $query->where('first_name', 'like', '%' . $data['first_name'] . '%');
+                        }
+                    }),
+    
+                Tables\Filters\Filter::make('last_name')
+                    ->form([
+                        Forms\Components\TextInput::make('last_name')->label('Last Name'),
+                    ])
+                    ->query(function (Builder $query, array $data) {
+                        if ($data['last_name']) {
+                            $query->where('last_name', 'like', '%' . $data['last_name'] . '%');
+                        }
+                    }),
+    
+                Tables\Filters\Filter::make('email')
+                    ->form([
+                        Forms\Components\TextInput::make('email')->label('Email'),
+                    ])
+                    ->query(function (Builder $query, array $data) {
+                        if ($data['email']) {
+                            $query->where('email', 'like', '%' . $data['email'] . '%');
+                        }
+                    }),
+    
+                Tables\Filters\MultiSelectFilter::make('lists')
+                    ->label('List')
+                    ->relationship('sources.contactList', 'name'),
+    
+                Tables\Filters\MultiSelectFilter::make('sources')
+                    ->label('Source')
+                    ->relationship('sources', 'name'),
+    
+                Tables\Filters\SelectFilter::make('user_id')
+                    ->label('Owner')
+                    ->relationship('user', 'name'),
+    
+                Tables\Filters\Filter::make('created_at')
+                    ->form([
+                        Forms\Components\DatePicker::make('from')->label('Date From'),
+                        Forms\Components\DatePicker::make('to')->label('Date To'),
+                    ])
+                    ->query(function (Builder $query, array $data) {
+                        if ($data['from']) {
+                            $query->whereDate('created_at', '>=', $data['from']);
+                        }
+                        if ($data['to']) {
+                            $query->whereDate('created_at', '<=', $data['to']);
+                        }
+                    }),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
