@@ -32,11 +32,12 @@ class ContactListResource extends Resource
                 Textarea::make('description') // Or Forms\Components\TextInput::make('description')
                     ->nullable()
                     ->maxLength(65535), // Max length for TEXT type
-                    Forms\Components\TextInput::make('priority')
+                Forms\Components\TextInput::make('priority')
                     ->required()
                     ->numeric()
-                    ->default(0)
-                    ->helperText('Lower numbers have higher priority (e.g., 0 is highest).'),
+                    ->minvalue(1)
+                    ->default(1)
+                    ->helperText('Lower numbers have higher priority (e.g., 1 is highest).'),
                 // user_id is usually handled automatically by mutateFormDataBeforeCreate
             ]);
     }

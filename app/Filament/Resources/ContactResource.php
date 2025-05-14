@@ -104,12 +104,15 @@ class ContactResource extends Resource
                 Tables\Columns\TextColumn::make('user.name')
                     ->label('Owner')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('sources.contactList.name')
                     ->label('Contact List')
                     ->badge()
-                    ->searchable()
-                    ->sortable(),
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('sources.contactList.priority')
+                ->label('List Priority')
+                ->badge(),
                 Tables\Columns\TextColumn::make('sources.name')
                     ->label('Sources')
                     ->badge()
@@ -187,6 +190,16 @@ class ContactResource extends Resource
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\BulkAction::make('export_excel')
+                        ->label('Export to Excel')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->action(function ($records) {
+                            // Export logic here
+                            return \Maatwebsite\Excel\Facades\Excel::download(
+                                new \App\Exports\ContactsExport($records),
+                                'contacts.xlsx'
+                            );
+                        }),
                 ]),
             ]);
     }
