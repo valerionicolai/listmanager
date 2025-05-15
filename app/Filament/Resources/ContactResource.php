@@ -232,4 +232,9 @@ class ContactResource extends Resource
         }
         return parent::getEloquentQuery();
     }
+    public static function canViewAny(): bool
+    {
+        $user = auth()->user();
+        return $user && $user->hasAnyRole(['SuperAmministratore', 'Amministratore', 'Operatore']);
+    }
 }

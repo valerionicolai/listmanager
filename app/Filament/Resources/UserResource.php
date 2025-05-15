@@ -15,6 +15,7 @@ use Spatie\Permission\Models\Role; // Import Role
 use Filament\Forms\Components\Select; // Import Select
 use Filament\Tables\Columns\TextColumn; // Import TextColumn
 use App\Filament\Resources\UserResource\RelationManagers\RolesRelationManager; // Import RolesRelationManager
+use Illuminate\Database\Eloquent\Builder;
 
 class UserResource extends Resource
 {
@@ -53,14 +54,21 @@ class UserResource extends Resource
                     ->maxLength(255),
                 Forms\Components\Select::make('roles')
                     ->multiple()
+                    ->required()
                     ->relationship('roles', 'name')
                     ->preload()
-                    // ->options(Role::pluck('name', 'id')) // This is an alternative if relationship doesn't work as expected
-                    ->getOptionLabelFromRecordUsing(fn ($record) => $record->name) // Ensure correct label
-                    ->helperText('Select roles for the user. SuperAmministratore can only be managed by another SuperAmministratore.')
-                    ->hidden(function () { // Control who can see/edit roles based on logged-in user
+                    ->options(function () {
                         $loggedInUser = auth()->user();
-                        // Hide the field if the user is NOT a SuperAmministratore AND NOT an Amministratore
+                        $rolesQuery = \Spatie\Permission\Models\Role::query();
+                        if ($loggedInUser && $loggedInUser->hasRole('Amministratore')) {
+                            $rolesQuery->where('name', '!=', 'SuperAmministratore');
+                        }
+                        return $rolesQuery->pluck('name', 'id');
+                    })
+                    ->getOptionLabelFromRecordUsing(fn ($record) => $record->name)
+                    ->helperText('Select roles for the user. SuperAmministratore can only be managed by another SuperAmministratore.')
+                    ->hidden(function () {
+                        $loggedInUser = auth()->user();
                         return !($loggedInUser->hasRole('SuperAmministratore') || $loggedInUser->hasRole('Amministratore'));
                     }),
             ]);
@@ -119,4 +127,32 @@ class UserResource extends Resource
             'edit' => Pages\EditUser::route('/{record}/edit'),
         ];
     }
+
+public static function getEloquentQuery(): Builder
+{
+    $query = parent::getEloquentQuery();
+    $user = auth()->user();
+
+    if ($user->hasRole('SuperAmministratore')) {
+        return $query;
+    }
+
+    if ($user->hasRole('Amministratore')) {
+        // Only show Amministratore and Operatore users
+        return $query->whereHas('roles', function ($q) {
+            $q->whereIn('name', ['Amministratore', 'Operatore']);
+        });
+    }
+
+    // Operators should not see any users
+    return $query->whereRaw('0=1');
+}
+
+
+    public static function canViewAny(): bool
+    {
+        $user = auth()->user();
+        return $user && $user->hasAnyRole(['SuperAmministratore', 'Amministratore']);
+    }
+
 }
