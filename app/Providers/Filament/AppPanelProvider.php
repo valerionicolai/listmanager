@@ -15,7 +15,10 @@ use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
-
+use App\Filament\Widgets\OperatorContactsStat;
+use App\Filament\Widgets\TotalContactsStat;
+use App\Filament\Widgets\DistinctContactsByEmailStat;
+use App\Filament\Widgets\TopPopulatedLists;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
@@ -42,7 +45,11 @@ class AppPanelProvider extends PanelProvider
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
+                OperatorContactsStat::class,
                 Widgets\AccountWidget::class,
+                TotalContactsStat::class,
+                DistinctContactsByEmailStat::class,
+                TopPopulatedLists::class,
                 // Widgets\FilamentInfoWidget::class,
             ])
             ->middleware([
