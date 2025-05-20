@@ -15,7 +15,7 @@ class TopPopulatedLists extends BaseWidget
         $user = Auth::user();
         if ($user && $user->hasAnyRole(['SuperAmministratore', 'Amministratore'])) {
             return ContactList::query()
-                ->select('contact_lists.*')
+                ->select('contact_lists.id', 'contact_lists.name')
                 ->selectRaw('COUNT(contact_source.contact_id) as contacts_count')
                 ->join('sources', 'contact_lists.id', '=', 'sources.contact_list_id')
                 ->join('contact_source', 'sources.id', '=', 'contact_source.source_id')
