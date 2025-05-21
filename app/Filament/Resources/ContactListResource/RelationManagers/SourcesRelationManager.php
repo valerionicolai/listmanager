@@ -42,7 +42,6 @@ class SourcesRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
-            // ->recordTitleAttribute('name') // Already set above
             ->columns([
                 Tables\Columns\TextColumn::make('name')->searchable(),
                 Tables\Columns\TextColumn::make('user.name')->label('Owner')->searchable()->toggleable(isToggledHiddenByDefault: true),
@@ -51,27 +50,25 @@ class SourcesRelationManager extends RelationManager
                 //
             ])
             ->headerActions([
+                // REMOVE: Tables\Actions\AttachAction::make(),
                 Tables\Actions\CreateAction::make()
-                    ->mutateFormDataUsing(function (array $data): array {
-                        $data['user_id'] = Auth::id();
-                        return $data;
-                    }),
-                Tables\Actions\AttachAction::make() // If you want to attach existing sources from other lists (less common for this setup)
-                    ->preloadRecordSelect(),
+                ->mutateFormDataUsing(function (array $data) {
+                    return $this->mutateFormDataBeforeCreate($data);
+                })
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\DetachAction::make(), // Detach from this list
-                Tables\Actions\DeleteAction::make(), // Delete the source entirely
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DetachBulkAction::make(),
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
+                Tables\Actions\DeleteAction::make(),
+                // REMOVE: Tables\Actions\DetachAction::make(),
             ]);
     }
 
+    public function mutateFormDataBeforeCreate(array $data): array
+{
+   // dd('mutateFormDataBeforeCreate called', $data);
+    $data['user_id'] = Auth::id();
+    return $data;
+}
     // To ensure only SuperAdmins/Admins can manage these
     public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {
@@ -79,4 +76,5 @@ class SourcesRelationManager extends RelationManager
         if (!$user instanceof User) return false;
         return $user->hasAnyRole(['SuperAmministratore', 'Amministratore']);
     }
+
 }
