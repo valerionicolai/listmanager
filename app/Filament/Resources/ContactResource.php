@@ -100,7 +100,8 @@ class ContactResource extends Resource
                     ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('phone')
-                    ->searchable(),
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 Tables\Columns\TextColumn::make('user.name')
                     ->label('Owner')
                     ->searchable()
@@ -117,6 +118,15 @@ class ContactResource extends Resource
                     ->label('Sources')
                     ->badge()
                     ->searchable(),
+                    Tables\Columns\TextColumn::make('company_role')
+                    ->label('Company Role')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('secondary_email')
+                    ->label('Secondary Email')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('notes')
+                    ->label('Notes')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

@@ -48,24 +48,13 @@ class ContactList extends Model
          ->where('contact_source.source_id', 'sources.id'); // This might need adjustment based on your exact pivot table structure for contacts to sources
     }
 
-    public function contactsViaSources(): BelongsToMany
-    {
-        // Assuming a Contact can belong to multiple Sources, and a Source can have multiple Contacts (many-to-many)
-        // And a ContactList has many Sources. We want Contacts that are in any of the Sources of this ContactList.
-        // This requires a more complex query or a different approach.
-        // A simpler way if you have direct contact_list_contact pivot:
-        // return $this->belongsToMany(Contact::class, 'contact_list_contact');
-
-        // If contacts are only linked via sources, you'd typically fetch sources and then their contacts.
-        // For display in Filament, you might need a custom Relation Manager or a custom column.
-        // The HasManyThrough above is an attempt but might be tricky.
-
-        // A more straightforward way to get contacts for a list (if they are linked through sources)
-        // is to get all source_ids for the list, then get all contacts linked to those source_ids.
-        // Consider the impact of changing sources() relationship on this method's logic
-        $sourceIds = $this->sources()->pluck('id')->toArray(); // Adjusted for HasMany
-        return Contact::whereHas('sources', function ($query) use ($sourceIds) {
-            $query->whereIn('sources.id', $sourceIds);
-        })->distinct();
-    }
+    // Remove the entire contactsViaSources method
+    // public function contactsViaSources(): BelongsToMany
+    // {
+    //     // Assuming a Contact can belong to multiple Sources, and a Source can have multiple Contacts (many-to-many)
+    //     // And a ContactList has many Sources. We want Contacts that are in any of the Sources of this ContactList.
+    //     // This requires a more complex query or a different approach.
+    //     // A simpler way if you have direct contact_list_contact pivot:
+    //     // return $this->belongsToMany(Contact::class, 'contact_list_contact');
+    // }
 }

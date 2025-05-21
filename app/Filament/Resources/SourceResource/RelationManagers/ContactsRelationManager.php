@@ -35,12 +35,24 @@ class ContactsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
-            // ->recordTitleAttribute('email') // Already set
             ->columns([
-                Tables\Columns\TextColumn::make('last_name')->searchable(),
-                Tables\Columns\TextColumn::make('first_name')->searchable(),
-                Tables\Columns\TextColumn::make('email')->searchable(),
-                Tables\Columns\TextColumn::make('user.name')->label('Owner')->searchable(),
+                Tables\Columns\TextColumn::make('last_name')->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('first_name')->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('email')->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('phone')
+                ->searchable()
+                ->toggleable(isToggledHiddenByDefault: false),
+                Tables\Columns\TextColumn::make('company_role')
+                    ->label('Company Role')
+                    ->toggleable(isToggledHiddenByDefault: false),
+                Tables\Columns\TextColumn::make('secondary_email')
+                    ->label('Secondary Email')
+                    ->toggleable(isToggledHiddenByDefault: false),
+                Tables\Columns\TextColumn::make('notes')
+                    ->label('Notes')
+                    ->toggleable(isToggledHiddenByDefault: false),
+                Tables\Columns\TextColumn::make('user.name')->label('Owner')->searchable()
+                ->toggleable(isToggledHiddenByDefault: false),
             ])
             ->filters([
                 //
@@ -58,11 +70,11 @@ class ContactsRelationManager extends RelationManager
             ])
             ->actions([
                 Tables\Actions\ViewAction::make()->url(fn (Model $record): string => \App\Filament\Resources\ContactResource::getUrl('edit', ['record' => $record])),
-                Tables\Actions\DetachAction::make(),
+                //Tables\Actions\DetachAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DetachBulkAction::make(),
+                    //Tables\Actions\DetachBulkAction::make(),
                 ]),
             ]);
     }

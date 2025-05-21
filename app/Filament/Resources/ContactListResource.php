@@ -88,7 +88,11 @@ class ContactListResource extends Resource
     {
         return [
              RelationManagers\SourcesRelationManager::class,
-             RelationManagers\ContactsRelationManager::class,
+             // Remove or comment out the ContactsRelationManager registration
+             // use App\Filament\Resources\ContactListResource\RelationManagers\ContactsRelationManager;
+             
+             // In the relations array or getRelations() method, remove ContactsRelationManager
+             // 'contactsViaSources' => ContactsRelationManager::class,
         ];
     }
 

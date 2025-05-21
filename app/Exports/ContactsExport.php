@@ -28,25 +28,13 @@ class ContactsExport implements FromCollection, WithHeadings
                     'last_name'   => $contact->last_name,
                     'email'       => $contact->email,
                     'phone'       => $contact->phone,
+                    'company_role' => $contact->company_role,
+                    'secondary_email' => $contact->secondary_email,
+                    'notes'       => $contact->notes,
                     'owner'       => optional($contact->user)->name,
                     'list'        => optional($source->contactList)->name,
                     'priority'    => optional($source->contactList)->priority,
                     'source'      => $source->name,
-                    'created_at'  => $contact->created_at,
-                    'updated_at'  => $contact->updated_at,
-                ];
-            }
-            // If a contact has no sources, you can optionally add a row with nulls for list/source
-            if ($contact->sources->isEmpty()) {
-                $rows[] = [
-                    'first_name'  => $contact->first_name,
-                    'last_name'   => $contact->last_name,
-                    'email'       => $contact->email,
-                    'phone'       => $contact->phone,
-                    'owner'       => optional($contact->user)->name,
-                    'list'        => null,
-                    'priority'    => null,
-                    'source'      => null,
                     'created_at'  => $contact->created_at,
                     'updated_at'  => $contact->updated_at,
                 ];
@@ -63,6 +51,9 @@ class ContactsExport implements FromCollection, WithHeadings
             'Last Name',
             'Email',
             'Phone',
+            'Company Role',
+            'Secondary Email',
+            'Notes',
             'Owner',
             'List',
             'Priority', 

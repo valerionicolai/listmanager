@@ -45,6 +45,9 @@ class SourcesRelationManager extends RelationManager
             ->columns([
                 Tables\Columns\TextColumn::make('name')->searchable(),
                 Tables\Columns\TextColumn::make('user.name')->label('Owner')->searchable()->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('contacts_count')
+                    ->label('Contacts Count')
+                    ->counts('contacts'), // This uses the contacts() relationship on the Source model
             ])
             ->filters([
                 //
@@ -58,17 +61,17 @@ class SourcesRelationManager extends RelationManager
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
-                // REMOVE: Tables\Actions\DetachAction::make(),
+                Tables\Actions\DeleteAction::make()
+                    ->visible(fn ($record) => $record->contacts()->count() === 0),
             ]);
     }
 
     public function mutateFormDataBeforeCreate(array $data): array
-{
-   // dd('mutateFormDataBeforeCreate called', $data);
-    $data['user_id'] = Auth::id();
-    return $data;
-}
+    {
+        // dd('mutateFormDataBeforeCreate called', $data);
+        $data['user_id'] = Auth::id();
+        return $data;
+    }
     // To ensure only SuperAdmins/Admins can manage these
     public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {

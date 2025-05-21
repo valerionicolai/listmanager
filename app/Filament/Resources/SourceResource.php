@@ -61,6 +61,9 @@ class SourceResource extends Resource
                     ->label('Contact List')
                     ->searchable()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('contacts_count')
+                    ->label('Contacts Count')
+                    ->counts('contacts'),
                 Tables\Columns\TextColumn::make('user.name') // Owner
                     ->label('Owner')
                     ->sortable()
@@ -84,7 +87,8 @@ class SourceResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\DeleteAction::make()
+                ->visible(fn ($record) => $record->contacts()->count() === 0),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
