@@ -67,22 +67,10 @@ class EditContact extends EditRecord
                     $contactFullNameEmail = "Unnamed contact";
                 }
                 
-                // Get lists and sources for this contact
-                $listNames = $contact->sources->map(function ($source) {
-                    return $source->contactList?->name; // Get the name of the contact list for each source
-                })->filter()->unique()->implode(', '); // Remove nulls, get unique names, and join
 
-                $sourceNames = $contact->sources->pluck('name')
-                                           ->filter()->unique()->implode(', '); // Get unique source names and join
-                
                 $warningMessage .= ($index + 1) . ". {$contactFullNameEmail} (ID: {$contact->id})\n";
                 
-                if (!empty($listNames)) {
-                    $warningMessage .= "   - Lists: {$listNames}\n";
-                }
-                if (!empty($sourceNames)) {
-                    $warningMessage .= "   - Sources: {$sourceNames}\n";
-                }
+          
                 $warningMessage .= "\n";
             }
             
@@ -144,141 +132,5 @@ class EditContact extends EditRecord
         $this->save($shouldRedirect, $shouldSendSavedNotification);
     }
 
-
-    public function OLDsave(bool $shouldRedirect = true, bool $shouldSendSavedNotification = true): void
-    { 
-        if ($this->bypassDuplicateCheck) {
-            parent::save($shouldRedirect, $shouldSendSavedNotification);
-            return;
-        } 
-        
-        $this->callHook('beforeValidate');
-        $data = $this->form->getState();
-        $this->callHook('afterValidate');
-        
-        $Editemail = $data['email'] ?? null;
-        $EditfirstName = $data['first_name'] ?? null;
-        $EditlastName = $data['last_name'] ?? null;
-        $currentId = $this->record->id;
-
-        $EditFullName = trim("{$EditfirstName} {$EditlastName}");
-        // Duplicate email check (excluding current record)
-        $existingContacts = Contact::where('email', $Editemail)
-            ->where('id', '!=', $currentId)
-            ->with(['sources.contactList'])
-            ->get();
-    
-        if ($existingContacts->count() > 0) {
-
-            $warningMessage = "The email '{$Editemail}' already exists in the database.\n\n";
-            $warningMessage .= "Found " . $existingContacts->count() . " contact(s) with this email:\n\n";
-            
-            // Enumerate all existing contacts with the same email
-            foreach ($existingContacts as $index => $contact) {
-                $contactFullName = trim("{$contact->first_name} {$contact->last_name}");
-                if (empty($contactFullName)) {
-                    $contactFullName = "Unnamed contact";
-                }
-                
-                // Get lists and sources for this contact
-                $listNames = $contact->sources->map(function ($source) {
-                    return $source->contactList?->name; // Get the name of the contact list for each source
-                })->filter()->unique()->implode(', '); // Remove nulls, get unique names, and join
-
-                $sourceNames = $contact->sources->pluck('name')
-                                           ->filter()->unique()->implode(', '); // Get unique source names and join
-                
-                $warningMessage .= ($index + 1) . ". {$contactFullName} (ID: {$contact->id})\n";
-                
-                if (!empty($listNames)) {
-                    $warningMessage .= "   - Lists: {$listNames}\n";
-                }
-                if (!empty($sourceNames)) {
-                    $warningMessage .= "   - Sources: {$sourceNames}\n";
-                }
-                $warningMessage .= "\n";
-            }
-            
-            $warningMessage .= "Do you still want to proceed with the update of {$EditFullName}?";
-
-           Notification::make()
-           ->warning()
-           ->title('Email Already Exists')
-           ->body(nl2br(htmlspecialchars($warningMessage)))
-           ->persistent()
-           ->actions([
-               Action::make('proceed')
-                   ->label('Yes, Update Anyway')
-                   ->color('danger')
-                   ->button()
-                   ->dispatch('proceedUpdateAnyway', ['shouldRedirect' => $shouldRedirect, 'shouldSendSavedNotification' => $shouldSendSavedNotification]),
-               Action::make('cancel')
-                   ->label('Cancel')
-                   ->close(),
-           ])
-           ->send();
-            return; // Halt current create flow, wait for notification interaction
-        }
-    
-        // Duplicate name check (excluding current record)
-        $existingNameContacts = Contact::where('first_name', $EditfirstName)
-            ->where('last_name', $EditlastName)
-            ->where('id', '!=', $currentId)
-            ->with(['sources.contactList'])
-            ->get();
-    
-        if ($existingNameContacts->count() > 0) {
-            $warningMessage = "A contact with the name '{$EditFullName}' already exists in the database (even if the email is different).\n\n";
-            $warningMessage .= "Found " . $existingNameContacts->count() . " contact(s) with this name:\n\n";
-    
-            foreach ($existingNameContacts as $index => $contact) {
-                $contactEmail = $contact->email ?? 'No email';
-                $contactFullName = trim("{$contact->first_name} {$contact->last_name}");
-                if (empty($contactFullName)) {
-                    $contactFullName = "Unnamed contact";
-                }
-    
-                $listNames = $contact->sources->map(function ($source) {
-                    return $source->contactList?->name;
-                })->filter()->unique()->implode(', ');
-    
-                $sourceNames = $contact->sources->pluck('name')
-                    ->filter()->unique()->implode(', ');
-    
-                $warningMessage .= ($index + 1) . ". {$contactFullName} (ID: {$contact->id}, Email: {$contactEmail})\n";
-                if (!empty($listNames)) {
-                    $warningMessage .= "   - Lists: {$listNames}\n";
-                }
-                if (!empty($sourceNames)) {
-                    $warningMessage .= "   - Sources: {$sourceNames}\n";
-                }
-                $warningMessage .= "\n";
-            }
-    
-            $warningMessage .= "Do you still want to proceed with the update of {$EditFullName}?";
-    
-            Notification::make()
-                ->warning()
-                ->title('Name Already Exists')
-                ->body(nl2br(htmlspecialchars($warningMessage)))
-                ->persistent()
-                ->actions([
-                    Action::make('proceed')
-                        ->label('Yes, Update Anyway')
-                        ->color('danger')
-                        ->button()
-                        ->dispatch('proceedUpdateAnyway', ['shouldRedirect' => $shouldRedirect, 'shouldSendSavedNotification' => $shouldSendSavedNotification]),
-                    Action::make('cancel')
-                        ->label('Cancel')
-                        ->close(),
-                ])
-                ->send();
-    
-            return; // Halt current update flow, wait for notification interaction
-        }
-    
-        // No duplicates found, proceed with update
-        $this->completeUpdateProcess($data, $shouldRedirect, $shouldSendSavedNotification);
-    }
     
 }
