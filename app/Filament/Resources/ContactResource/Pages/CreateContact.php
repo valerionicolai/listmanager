@@ -108,9 +108,6 @@ class CreateContact extends CreateRecord
             
             $warningMessage .= "Do you still want to proceed with adding {$newContactFullName}?";
 
-    
-           // ... existing code ...
-
            Notification::make()
            ->warning()
            ->title('Email Already Exists')
@@ -127,11 +124,71 @@ class CreateContact extends CreateRecord
                    ->close(),
            ])
            ->send();
-
-// ... existing code ...
-
             return; // Halt current create flow, wait for notification interaction
         }
+        // --- NEW CONTROL: Check for duplicate first_name + last_name ---
+    $firstName = $data['first_name'] ?? null;
+    $lastName = $data['last_name'] ?? null;
+    $existingNameContacts = Contact::where('first_name', $firstName)
+        ->where('last_name', $lastName)
+        ->with(['sources.contactList'])
+        ->get();
+
+    if ($existingNameContacts->count() > 0) {
+        $newContactFullName = trim("{$firstName} {$lastName}");
+        if (empty($newContactFullName)) {
+            $newContactFullName = "the new contact you are trying to add";
+        }
+
+        $warningMessage = "A contact with the name '{$newContactFullName}' already exists in the database (even if the email is different).\n\n";
+        $warningMessage .= "Found " . $existingNameContacts->count() . " contact(s) with this name:\n\n";
+
+        foreach ($existingNameContacts as $index => $contact) {
+            $contactEmail = $contact->email ?? 'No email';
+            $contactFullName = trim("{$contact->first_name} {$contact->last_name}");
+            if (empty($contactFullName)) {
+                $contactFullName = "Unnamed contact";
+            }
+
+            $listNames = $contact->sources->map(function ($source) {
+                return $source->contactList?->name;
+            })->filter()->unique()->implode(', ');
+
+            $sourceNames = $contact->sources->pluck('name')
+                ->filter()->unique()->implode(', ');
+
+            $warningMessage .= ($index + 1) . ". {$contactFullName} (ID: {$contact->id}, Email: {$contactEmail})\n";
+            if (!empty($listNames)) {
+                $warningMessage .= "   - Lists: {$listNames}\n";
+            }
+            if (!empty($sourceNames)) {
+                $warningMessage .= "   - Sources: {$sourceNames}\n";
+            }
+            $warningMessage .= "\n";
+        }
+
+        $warningMessage .= "Do you still want to proceed with adding {$newContactFullName}?";
+
+        Notification::make()
+            ->warning()
+            ->title('Name Already Exists')
+            ->body(nl2br(htmlspecialchars($warningMessage)))
+            ->persistent()
+            ->actions([
+                Action::make('proceed')
+                    ->label('Yes, Create Anyway')
+                    ->color('danger')
+                    ->button()
+                    ->dispatch('proceedCreateAnyway', ['another' => $another]),
+                Action::make('cancel')
+                    ->label('Cancel')
+                    ->close(),
+            ])
+            ->send();
+
+        return; // Halt current create flow, wait for notification interaction
+    }
+    // --- END NEW CONTROL ---
 
         // No existing contact with this email found, proceed directly
         $this->completeCreateProcess($data, $another);

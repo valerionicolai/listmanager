@@ -31,13 +31,14 @@ class ContactResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('last_name')
-                    ->required()
-                    ->maxLength(255),
+                
                 Forms\Components\TextInput::make('first_name')
                     ->required()
                     ->maxLength(255),
-                Forms\Components\TextInput::make('email')
+                    Forms\Components\TextInput::make('last_name')
+                    ->required()
+                    ->maxLength(255),
+                    Forms\Components\TextInput::make('email')
                     ->email()
                     ->required()
                     ->maxLength(255)
