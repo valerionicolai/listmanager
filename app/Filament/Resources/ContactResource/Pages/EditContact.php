@@ -99,25 +99,25 @@ class EditContact extends EditRecord
         $this->completeUpdateProcess($data, $shouldRedirect, $shouldSendSavedNotification);
     }
 
-    public function completeUpdateProcess(array $data,bool $shouldRedirect = true, bool $shouldSendSavedNotification = true): void
+    public function completeUpdateProcess(array $data, bool $shouldRedirect = true, bool $shouldSendSavedNotification = true): void
     {
         // Data should be mutated before creation
         $mutatedData = $this->mutateFormDataBeforeSave($data);
 
         $this->callHook('beforeUpdate');
-        $record = $this->handleRecordUpdate($mutatedData);
+        // Fix: Pass the record as the first parameter
+        $record = $this->handleRecordUpdate($this->record, $mutatedData);
         $this->form->model($record)->saveRelationships(); // Crucial for saving many-to-many like sources
         $this->callHook('afterUpdate');
 
         $this->rememberData();
 
-        if ($notification = $this->getCreatedNotification()) {
+        if ($notification = $this->getSavedNotification()) {
             $notification->send();
         }
 
         if ($redirectUrl = $this->getRedirectUrl()) {
             // Determine if SPA navigation can be used
-            // MODIFIED LINE:
             $canSpaNavigate = method_exists(Filament::class, 'isSpaEnabled') && Filament::isSpaEnabled() && method_exists($this, 'canSpaNavigate') ? $this->canSpaNavigate() : false;
             $this->redirect($redirectUrl, navigate: $canSpaNavigate);
         }

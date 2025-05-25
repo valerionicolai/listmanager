@@ -5,6 +5,8 @@
 
     RewriteEngine On
 
+    # Skip redirect for silent-login route
+    RewriteCond %{REQUEST_URI} !^/silent-login [NC]
     RewriteRule ^/?$ /app/login [R=302,L]
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .

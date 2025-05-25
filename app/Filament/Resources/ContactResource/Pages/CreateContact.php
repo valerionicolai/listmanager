@@ -46,16 +46,31 @@ class CreateContact extends CreateRecord
         return static::getResource()::getUrl('index');
     }
 
+   /* protected function beforeValidate(): void
+    {
+        $data = $this->form->getRawState();
+        
+        if (isset($data['source_ids']) && !is_array($data['source_ids'])) {
+            $this->form->fill([
+                'source_ids' => [$data['source_ids']],
+            ]);
+        }
+        dd($data);
+    }*/
+
     public function create(bool $another = false): void // Changed from protected to public
     {
+         
         if ($this->bypassDuplicateCheck) {
             parent::create($another);
             return;
         }
+        
         $this->callHook('beforeValidate');
         $data = $this->form->getState();
         $this->callHook('afterValidate');
 
+        
         $email = $data['email'] ?? null;
         $newFirstName = $data['first_name'] ?? 'the new contact'; // Name from the current form
         $newLastName = $data['last_name'] ?? '';                 // Name from the current form
@@ -189,7 +204,7 @@ class CreateContact extends CreateRecord
         return; // Halt current create flow, wait for notification interaction
     }
     // --- END NEW CONTROL ---
-
+    
         // No existing contact with this email found, proceed directly
         $this->completeCreateProcess($data, $another);
     }
@@ -226,4 +241,6 @@ class CreateContact extends CreateRecord
         $another = $params['another'] ?? false;
         $this->create($another);
     }
+
+    
 }

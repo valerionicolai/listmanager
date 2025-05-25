@@ -29,16 +29,20 @@ class ContactResource extends Resource
 
     public static function form(Form $form): Form
     {
+        $regexname = '/^(?![\s\-.\'\'])([\p{L}\s\-.\']){1,98}[\p{L}]$/u';
+        
         return $form
             ->schema([
                 
                 Forms\Components\TextInput::make('first_name')
                     ->required()
+                    ->regex($regexname)
                     ->maxLength(255),
-                    Forms\Components\TextInput::make('last_name')
+                Forms\Components\TextInput::make('last_name')
                     ->required()
+                    ->regex($regexname)
                     ->maxLength(255),
-                    Forms\Components\TextInput::make('email')
+                Forms\Components\TextInput::make('email')
                     ->email()
                     ->required()
                     ->maxLength(255)
@@ -50,7 +54,23 @@ class ContactResource extends Resource
                         }
                     )
                     ->validationMessages([
-                        'unique' => 'A contact with this first name, last name, and email already exists.',
+                        'unique' => function (Forms\Get $get) {
+                            $existing = Contact::where('email', $get('email'))
+                                ->where('first_name', $get('first_name'))
+                                ->where('last_name', $get('last_name'))
+                                ->with('sources.contactList')  // ✅ Correct relationship name
+                                ->first();
+                            if ($existing && $existing->sources->count() > 0) {
+                                $listNames = $existing->sources
+                                    ->map(fn($source) => $source->contactList?->name)
+                                    ->filter()
+                                    ->unique()
+                                    ->join(', ');
+                                return "A contact with this first name, last name, and email already exists in the following lists: {$listNames}.";
+                            }
+
+                            return "A contact with this first name, last name, and email already exists.";                           
+                        }
                     ]),
                 Forms\Components\TextInput::make('phone')
                     ->tel()
@@ -58,30 +78,39 @@ class ContactResource extends Resource
                     ->maxLength(255),
                 Forms\Components\TextInput::make('company_role')
                     ->nullable()
+                    ->regex($regexname)
                     ->maxLength(255),
                 Forms\Components\TextInput::make('secondary_email')
                     ->email()
                     ->nullable()
                     ->maxLength(255),
                 Forms\Components\Textarea::make('notes')
+                    ->visible(fn () => !auth()->user()->hasRole('Operatore'))
                     ->nullable()
                     ->columnSpanFull(),
-                // Removed the contact_list_id field as it's no longer needed for filtering
+               
                 Forms\Components\Select::make('source_ids')
                     ->label('Sources')
-                    ->multiple()
-                    ->relationship(name: 'sources', titleAttribute: 'name') // This handles saving
+                    ->relationship(name: 'sources', titleAttribute: 'name')
                     ->options(function (): Collection {
                         // Fetch all sources and format them to include their contact list name
                         return Source::with('contactList')->get()->mapWithKeys(function ($source) {
                             $listName = $source->contactList ? $source->contactList->name : 'No List';
-                            return [$source->id => "{$source->name} ({$listName})"];
+                            return [$source->id => " {$listName} ({$source->name})"];
                         });
                     })
                     ->preload()
                     ->searchable()
-                    ->helperText('Select one or more sources. Sources are shown with their respective contact lists.')
-                    ->required(fn (string $context): bool => $context === 'create') // Required on create
+                    //->multiple(fn (string $context): bool => $context === 'edit') // Multiple selection only in edit form
+                    ->multiple()
+                    ->helperText(function (string $context): string {
+                        return $context === 'edit'
+                            ? 'Select one or more sources. Sources are shown with their respective contact lists.'
+                            : 'Select a source. Sources are shown with their respective contact lists.';
+                    })
+                    ->required() // Keep it required in all contexts
+                    ->maxItems(fn (string $context): int => $context === 'create' ? 1 : 10) // Limit to 1 item in create context
+                    ->minItems(1) 
                     ->columnSpanFull(),
                 // user_id is set automatically in CreateContact page
             ]);
@@ -126,6 +155,7 @@ class ContactResource extends Resource
                     ->label('Secondary Email')
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('notes')
+                    ->visible(fn () => !auth()->user()->hasRole('Operatore'))
                     ->label('Notes')
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('created_at')
@@ -200,7 +230,7 @@ class ContactResource extends Resource
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+
                     Tables\Actions\BulkAction::make('export_excel')
                         ->label('Export to Excel')
                         ->icon('heroicon-o-arrow-down-tray')
@@ -211,6 +241,7 @@ class ContactResource extends Resource
                                 'contacts.xlsx'
                             );
                         }),
+                    Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
     }

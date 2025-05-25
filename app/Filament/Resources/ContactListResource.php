@@ -28,7 +28,11 @@ class ContactListResource extends Resource
             ->schema([
                 Forms\Components\TextInput::make('name')
                     ->required()
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    ->unique(ignoreRecord: true) // <-- Add this line for unique validation
+                    ->validationMessages([
+                        'unique' => 'A contact list with this name already exists.',
+                    ]),
                 Textarea::make('description') // Or Forms\Components\TextInput::make('description')
                     ->nullable()
                     ->maxLength(65535), // Max length for TEXT type
